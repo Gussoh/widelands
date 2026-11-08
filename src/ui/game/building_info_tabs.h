@@ -31,7 +31,7 @@
 
 class InteractiveBase;
 
-/// Width of the content of the "Production" tab.
+/// Width of the content of the "Production" and "Upgrade" tabs.
 constexpr int kBuildingInfoTabWidth = 400;
 
 /**
@@ -71,5 +71,17 @@ private:
 	UI::MultilineTextarea* footer_{nullptr};
 	uint32_t last_update_{0U};
 };
+
+/**
+ * Builds the richtext for the "Upgrade" tab: the upgrade chain around 'current' (previous level,
+ * this building, next level) and what changes in costs, production and requirements when it is
+ * enhanced. 'current' must be enhanceable, see building_can_be_enhanced().
+ */
+std::string building_upgrade_richtext(const Widelands::Player& player,
+                                      const Widelands::BuildingDescr& current);
+
+/// Whether 'descr' has a next level, i.e. whether the "Upgrade" tab is worth showing.
+bool building_can_be_enhanced(const Widelands::TribeDescr& tribe,
+                              const Widelands::BuildingDescr& descr);
 
 #endif  // end of include guard: WL_UI_GAME_BUILDING_INFO_TABS_H

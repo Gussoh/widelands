@@ -170,6 +170,8 @@ void ProductionSiteWindow::init(bool avoid_fastclick, bool workarea_preview_want
 	}
 	worker_table_selection_changed();
 
+	add_upgrade_tab();
+
 	if (production_site->descr().type() == Widelands::MapObjectType::PRODUCTIONSITE) {
 		// If this is not a productionsite, then we are a trainingsite window.
 		// The derived class's init() will call initialization_complete().

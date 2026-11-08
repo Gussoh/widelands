@@ -33,8 +33,10 @@
 #include "logic/map_objects/tribes/tribe_descr.h"
 #include "logic/map_objects/tribes/warehouse.h"
 #include "logic/player.h"
+#include "ui/basic/multilinetextarea.h"
 #include "ui/basic/tabpanel.h"
 #include "ui/game/actionconfirm.h"
+#include "ui/game/building_info_tabs.h"
 #include "ui/game/debug_ui.h"
 #include "ui/game/helpwindow.h"
 #include "ui/game/inputqueuedisplay.h"
@@ -49,6 +51,7 @@ constexpr const char* const kImgMuteThis = "images/wui/buildings/menu_mute_this.
 constexpr const char* const kImgUnmuteThis = "images/wui/buildings/menu_unmute_this.png";
 constexpr const char* const kImgMuteAll = "images/wui/buildings/menu_mute_all.png";
 constexpr const char* const kImgUnmuteAll = "images/wui/buildings/menu_unmute_all.png";
+constexpr const char* const kImgTabUpgrade = "images/wui/buildings/menu_up_train.png";
 
 BuildingWindow::BuildingWindow(InteractiveBase& parent,
                                BuildingWindow::Registry& reg,
@@ -130,6 +133,8 @@ void BuildingWindow::init(bool avoid_fastclick, bool workarea_preview_wanted) {
 	caps_setup_ = false;
 	toggle_workarea_ = nullptr;
 	watch_button_ = nullptr;
+	upgrade_button_ = nullptr;
+	upgrade_button_state_ = -1;
 	avoid_fastclick_ = avoid_fastclick;
 
 	vbox_.reset(new UI::Box(this, UI::PanelStyle::kWui, "vbox", 0, 0, UI::Box::Vertical));
@@ -153,6 +158,59 @@ void BuildingWindow::init(bool avoid_fastclick, bool workarea_preview_wanted) {
 		show_workarea();
 	} else {
 		hide_workarea(true);
+	}
+}
+
+void BuildingWindow::add_upgrade_tab() {
+	Widelands::Building* building = building_.get(parent_->egbase());
+	if (building == nullptr ||
+	    !building_can_be_enhanced(building->owner().tribe(), building->descr())) {
+		return;
+	}
+	UI::Box* upgrade_box =
+	   new UI::Box(get_tabs(), UI::PanelStyle::kWui, "upgrade_box", 0, 0, UI::Box::Vertical);
+	// The text area has no desired width of its own; this strut keeps the tab from shrinking.
+	upgrade_box->add(
+	   new UI::Panel(upgrade_box, UI::PanelStyle::kWui, "strut", 0, 0, kBuildingInfoTabWidth, 0));
+	UI::MultilineTextarea* upgrade_text = new UI::MultilineTextarea(
+	   upgrade_box, "upgrade_text", 0, 0, kBuildingInfoTabWidth, 0, UI::PanelStyle::kWui,
+	   building_upgrade_richtext(building->owner(), building->descr()), UI::Align::kLeft,
+	   UI::MultilineTextarea::ScrollMode::kNoScrolling);
+	upgrade_box->add(upgrade_text, UI::Box::Resizing::kFullSize);
+
+	// Upgrade button, same action as the enhance button in the bottom bar
+	const Widelands::DescriptionIndex enhancement = building->descr().enhancement();
+	const Widelands::TribeDescr& tribe = building->owner().tribe();
+	if (ibase()->can_act(building->owner().player_number()) &&
+	    enhancement != Widelands::INVALID_INDEX && tribe.has_building(enhancement)) {
+		const Widelands::BuildingDescr& next = *tribe.get_building_descr(enhancement);
+		upgrade_button_ = new UI::Button(
+		   upgrade_box, "upgrade_now", 0, 0, kBuildingInfoTabWidth, 34,
+		   UI::ButtonStyle::kWuiSecondary, format(_("Enhance to %s"), next.descname()));
+		upgrade_button_->sigclicked.connect(
+		   [this, enhancement]() { act_enhance(enhancement, false); });
+		upgrade_box->add_space(4);
+		upgrade_box->add(upgrade_button_, UI::Box::Resizing::kFullSize);
+		upgrade_box->add_space(4);
+		update_upgrade_button(*building);
+	}
+
+	/** TRANSLATORS: Tab in a building window showing its upgrade path */
+	get_tabs()->add("upgrade", g_image_cache->get(kImgTabUpgrade), upgrade_box, _("Upgrade"));
+}
+
+void BuildingWindow::update_upgrade_button(const Widelands::Building& building) {
+	if (upgrade_button_ == nullptr) {
+		return;
+	}
+	// Disabled while the upgrade is forbidden in this game or not possible right now (e.g. while
+	// the building is being dismantled). The costs are shown right above the button.
+	const bool allowed = building.owner().is_building_type_allowed(building.descr().enhancement());
+	const bool possible = (building.get_playercaps() & Widelands::Building::PCap_Enhancable) != 0u;
+	const int state = allowed && possible ? 1 : 0;
+	if (state != upgrade_button_state_) {
+		upgrade_button_state_ = state;
+		upgrade_button_->set_enabled(state == 1);
 	}
 }
 
@@ -208,6 +266,8 @@ void BuildingWindow::think() {
 		}
 		caps_setup_ = true;
 	}
+
+	update_upgrade_button(*building);
 
 	if (mute_this_ != nullptr) {
 		if (mute_all_ == nullptr) {

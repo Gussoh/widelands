@@ -96,6 +96,10 @@ protected:
 
 	virtual void setup_name_field_editbox(UI::Box& /* vbox */) {
 	}
+	/// Adds the "Upgrade" tab if this building can be enhanced.
+	void add_upgrade_tab();
+	/// Enables/disables the enhance button in the "Upgrade" tab.
+	void update_upgrade_button(const Widelands::Building& building);
 	void act_bulldoze();
 	void act_dismantle();
 	void act_debug();
@@ -158,6 +162,9 @@ private:
 	bool showing_workarea_;
 	bool avoid_fastclick_;
 	CollapsedState* priority_collapsed_;  ///< Owned by the BuildingWindow::Registry
+
+	UI::Button* upgrade_button_{nullptr};  ///< In the "Upgrade" tab, if any
+	int upgrade_button_state_{-1};         ///< Last state applied by update_upgrade_button()
 
 	UI::Button* expeditionbtn_;
 	UI::Button* mute_this_;
