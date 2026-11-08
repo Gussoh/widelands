@@ -12,6 +12,7 @@ Examples:
   utils/inspect/building.py empire_sentry --tabs upgrade --keep
   utils/inspect/building.py barbarians_lumberjacks_hut barbarians_coalmine_deep --tabs all
   utils/inspect/building.py --all empire --tabs outputs upgrade   # smoke test a whole tribe
+  utils/inspect/building.py barbarians_coalmine --build-menu      # build menu tooltip
 
 Screenshots end up in <build dir>/inspect_home/screenshots/.
 """
@@ -54,6 +55,7 @@ local keep = {keep}
 local press = "{press}"
 local prefix = "{prefix}"
 local wait = {wait}
+local build_menu = {build_menu}
 
 local function find_window(serial)
    return mv.windows["building_window_" .. serial]
@@ -94,7 +96,55 @@ run(function()
          end
       end
    end
+   -- Build menu mode: hover over each building in the build menu and screenshot its tooltip.
+   local function inspect_build_menu(name)
+      local d = wl.Game():get_building_description(name)
+      local cap = d.is_mine and "mine" or d.size
+      local target = nil
+      for _, f in ipairs(hq:region(14, 4)) do
+         if f:has_max_caps(cap) then
+            p:conquer(f, 2)
+            clear(f, 2)
+            if f:has_caps(cap) then
+               target = f
+               break
+            end
+         end
+      end
+      if not target then
+         print("INSPECT error: no place to build " .. name)
+         return
+      end
+      mv:scroll_to_field(target)
+      sleep(800)
+      mv:click(target)
+      sleep(800)
+      local w = mv.windows["field_action"]
+      if not w then
+         print("INSPECT error: build menu did not open for " .. name)
+         return
+      end
+      local tab = w.tabs[d.is_mine and "mines" or d.size]
+      if tab then tab:click() end
+      sleep(400)
+      local btn = w.buttons[name]
+      if not btn then
+         print("INSPECT error: " .. name .. " is not in the build menu")
+      else
+         local x, y = mv:get_descendant_position(btn)
+         wl.ui.mouse_move(x + btn.width // 2, y + btn.height // 2)
+         sleep(1500)
+         shoot(name .. "_buildmenu")
+      end
+      w:close()
+      sleep(300)
+   end
+
    for i, name in ipairs(buildings) do
+      if build_menu then
+         inspect_build_menu(name)
+         goto continue
+      end
       clear(spot, 2)
       clear(hq.brn.rn.rn.rn, 3)
       local b = prefilled_buildings(p, {{ name, spot.x, spot.y }})[1]
@@ -151,6 +201,7 @@ run(function()
          b:destroy()
          sleep(300)
       end
+      ::continue::
    end
    print("INSPECT done")
    if not keep then
@@ -198,6 +249,9 @@ def main():
     parser.add_argument('--wait', type=int, default=0, metavar='SECONDS',
                         help='game seconds to let each building work (fast-forwarded) before '
                         'opening its window')
+    parser.add_argument('--build-menu', action='store_true',
+                        help='instead of opening the building windows, hover over each building '
+                        'in the build menu and screenshot its tooltip')
     parser.add_argument('--prefix', default='',
                         help='prefix for screenshot file names, e.g. "before_"')
     args = parser.parse_args()
@@ -221,7 +275,8 @@ def main():
         f.write(TEMPLATE.format(map=args.map, tribe=tribe))
     with open(os.path.join(GENERATED, 'inspect.lua'), 'w', newline='\n') as f:
         f.write(SCRIPT.format(buildings=lua_list(args.buildings), tabs=lua_list(args.tabs),
-                              keep='true' if args.keep else 'false', press=args.press, prefix=args.prefix, wait=args.wait))
+                              keep='true' if args.keep else 'false', press=args.press, prefix=args.prefix, wait=args.wait,
+                              build_menu='true' if args.build_menu else 'false'))
 
     home = os.path.join(args.build_dir, 'inspect_home')
     os.makedirs(home, exist_ok=True)

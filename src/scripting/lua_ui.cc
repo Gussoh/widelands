@@ -20,6 +20,7 @@
 
 #include <memory>
 
+#include <SDL_events.h>
 #include <SDL_mouse.h>
 
 #include "base/macros.h"
@@ -389,6 +390,31 @@ static int L_screenshot(lua_State* L) {
 	return 0;
 }
 
+/* RST
+.. method:: mouse_move(x, y)
+
+   .. versionadded:: 1.4
+
+   Make the game believe that the mouse moved to the given position, e.g. to show a tooltip. The
+   real mouse cursor is not moved. Intended for development and automated UI inspection.
+
+   :arg x: Horizontal position in pixels, relative to the game window.
+   :type x: :class:`integer`
+   :arg y: Vertical position in pixels, relative to the game window.
+   :type y: :class:`integer`
+*/
+static int L_mouse_move(lua_State* L) {
+	SDL_Event ev{};
+	ev.type = SDL_MOUSEMOTION;
+	ev.motion.x = luaL_checkint32(L, 1);
+	ev.motion.y = luaL_checkint32(L, 2);
+	// A non-zero relative motion is needed for the event to reach the panels.
+	ev.motion.xrel = 1;
+	ev.motion.yrel = 1;
+	SDL_PushEvent(&ev);
+	return 0;
+}
+
 // TODO(Nordfriese): We do not currently expose the primary selection buffer because it is
 // only available if we compile with a sufficiently recent SDL version. Once this becomes the
 // standard for all deployments, add the primary buffer bindings
@@ -420,6 +446,7 @@ const static struct luaL_Reg wlui[] = {
    {"get_clipboard", &L_get_clipboard},
    {"set_clipboard", &L_set_clipboard},
    {"screenshot", &L_screenshot},
+   {"mouse_move", &L_mouse_move},
    {nullptr, nullptr}};
 
 void luaopen_wlui(lua_State* L, const bool game_or_editor) {
