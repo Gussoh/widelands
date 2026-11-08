@@ -24,6 +24,8 @@
 
 #include "base/macros.h"
 #include "graphic/font_handler.h"
+#include "graphic/graphic.h"
+#include "io/filesystem/layered_filesystem.h"
 #include "logic/player.h"
 #include "scripting/globals.h"
 #include "scripting/luna.h"
@@ -366,6 +368,27 @@ static int L_set_clipboard(lua_State* L) {
 	return 0;
 }
 
+/* RST
+.. method:: screenshot(filename)
+
+   .. versionadded:: 1.4
+
+   Save a screenshot of the next rendered frame as a PNG file. The path is relative to the
+   Widelands home directory. Intended for development and automated UI inspection.
+
+   :arg filename: Path of the PNG file to write.
+   :type filename: :class:`string`
+*/
+static int L_screenshot(lua_State* L) {
+	const std::string filename = luaL_checkstring(L, 1);
+	const std::string dir = FileSystem::fs_dirname(filename);
+	if (!dir.empty()) {
+		g_fs->ensure_directory_exists(dir);
+	}
+	g_gr->screenshot(filename);
+	return 0;
+}
+
 // TODO(Nordfriese): We do not currently expose the primary selection buffer because it is
 // only available if we compile with a sufficiently recent SDL version. Once this becomes the
 // standard for all deployments, add the primary buffer bindings
@@ -396,6 +419,7 @@ const static struct luaL_Reg wlui[] = {
    {"is_rtl", &L_is_rtl},
    {"get_clipboard", &L_get_clipboard},
    {"set_clipboard", &L_set_clipboard},
+   {"screenshot", &L_screenshot},
    {nullptr, nullptr}};
 
 void luaopen_wlui(lua_State* L, const bool game_or_editor) {
