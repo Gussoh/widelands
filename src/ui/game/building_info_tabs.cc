@@ -134,12 +134,27 @@ BuildingOutputsDisplay::BuildingOutputsDisplay(UI::Panel* parent,
 }
 
 void BuildingOutputsDisplay::add_section(const std::string& title) {
+	// The section title on the left and a "Stock" column heading above the stock numbers, so
+	// that the numbers are not mistaken for the amount produced.
+	UI::Box* header = new UI::Box(this, UI::PanelStyle::kWui, "section_header", 0, 0,
+	                              UI::Box::Horizontal);
 	UI::Textarea* heading = new UI::Textarea(
-	   this, UI::PanelStyle::kWui, "section_heading", UI::FontStyle::kWuiInfoPanelHeading, title);
+	   header, UI::PanelStyle::kWui, "section_heading", UI::FontStyle::kWuiInfoPanelHeading, title);
+	UI::Textarea* stock_heading =
+	   new UI::Textarea(header, UI::PanelStyle::kWui, "stock_heading",
+	                    UI::FontStyle::kWuiInfoPanelHeading, 0, 0, kStockWidth, 0,
+	                    _("Stock"), UI::Align::kRight);
+	stock_heading->set_fixed_width(kStockWidth);
+	header->add(heading, UI::Box::Resizing::kAlign, UI::Align::kCenter);
+	header->add_inf_space();
+	header->add(stock_heading, UI::Box::Resizing::kAlign, UI::Align::kCenter);
+	// Line up with the stock column of the rows below (status icon and its spacing)
+	header->add_space(8 + kStatusIconSize + 8);
+
 	if (get_nritems() > 0) {
 		add_space(kRowSpacing * 2);
 	}
-	add(heading, UI::Box::Resizing::kAlign);
+	add(header, UI::Box::Resizing::kFullSize);
 }
 
 void BuildingOutputsDisplay::add_row(Widelands::WareWorker type,
@@ -235,7 +250,8 @@ void BuildingOutputsDisplay::update_rows() {
 			row.stock->set_style_override(
 			   colored_font(UI::FontStyle::kWuiLabel,
 				             g_style_manager->font_style(UI::FontStyle::kWuiLabel).color()));
-			row.stock->set_tooltip("");
+			row.stock->set_tooltip(row.type == Widelands::wwWARE ? _("Wares in warehouses") :
+			                                                      _("Workers in warehouses"));
 			continue;
 		}
 		const bool infinite_target = target == Widelands::kEconomyTargetInfinity;
