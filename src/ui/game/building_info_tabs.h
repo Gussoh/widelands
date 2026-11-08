@@ -84,4 +84,13 @@ std::string building_upgrade_richtext(const Widelands::Player& player,
 bool building_can_be_enhanced(const Widelands::TribeDescr& tribe,
                               const Widelands::BuildingDescr& descr);
 
+/**
+ * Richtext to append to a production site's tooltip in the build menu: a "Production" heading,
+ * its inputs, an arrow and its outputs as icons, and then one line per later level of its upgrade
+ * chain with that level's name and the outputs it adds. Returns an empty string for buildings
+ * that are not production sites. The result is meant to be placed inside a paragraph.
+ */
+std::string building_production_tooltip(const Widelands::TribeDescr& tribe,
+                                        const Widelands::BuildingDescr& descr);
+
 #endif  // end of include guard: WL_UI_GAME_BUILDING_INFO_TABS_H

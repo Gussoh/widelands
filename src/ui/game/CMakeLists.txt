@@ -337,6 +337,7 @@ wl_library(ui_game_fieldaction
     ui_game_actionconfirm
     ui_game_wares_displays
     logic_map
+    ui_game_buildingwindows
 )
 
 wl_library(ui_game_savegame

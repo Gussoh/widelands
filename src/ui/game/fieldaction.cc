@@ -42,6 +42,7 @@
 #include "ui/basic/tabpanel.h"
 #include "ui/basic/unique_window.h"
 #include "ui/game/actionconfirm.h"
+#include "ui/game/building_info_tabs.h"
 #include "ui/game/debug_ui.h"
 #include "ui/game/economy_options_window.h"
 #include "ui/game/fleet_options_window.h"
@@ -115,13 +116,19 @@ void BuildGrid::add(Widelands::DescriptionIndex id) {
 		   UI::PanelStyle::kWui, false);
 	}
 
+	std::string production = building_production_tooltip(plr_->tribe(), descr);
+	if (!production.empty()) {
+		production = "<br>" + production;
+	}
+
 	UI::IconGrid::add(descr.name(), descr.representative_image(&plr_->get_playercolor()),
 	                  reinterpret_cast<void*>(id),
 	                  descname + "<br>" +
 	                     g_style_manager->ware_info_style(UI::WareInfoStyle::kNormal)
 	                        .header_font()
 	                        .as_font_tag(_("Construction costs:")) +
-	                     "<br>" + waremap_to_richtext(plr_->tribe(), descr.buildcost()));
+	                     "<br>" + waremap_to_richtext(plr_->tribe(), descr.buildcost()) +
+	                     production);
 }
 
 /*

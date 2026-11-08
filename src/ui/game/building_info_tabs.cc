@@ -538,6 +538,40 @@ const Widelands::BuildingDescr* level(const Widelands::TribeDescr& tribe,
 	return tribe.get_building_descr(index);
 }
 
+/// A ware or worker icon for the build menu tooltip.
+std::string tooltip_icon(const std::string& icon_filename) {
+	return format("<img src=\"%s\" width=24>", icon_filename);
+}
+
+/// Inputs, an arrow and outputs of 'descr' as a row of icons, or "" if it produces nothing.
+/// Without inputs, only the outputs are shown.
+std::string production_icons(const Widelands::TribeDescr& tribe,
+                             const Widelands::BuildingDescr& descr) {
+	const auto* site = dynamic_cast<const Widelands::ProductionSiteDescr*>(&descr);
+	if (site == nullptr ||
+	    (site->output_ware_types().empty() && site->output_worker_types().empty())) {
+		return std::string();
+	}
+	std::string result;
+	for (const Widelands::WareAmount& input : site->input_wares()) {
+		result += tooltip_icon(tribe.get_ware_descr(input.first)->icon_filename());
+	}
+	for (const Widelands::WareAmount& input : site->input_workers()) {
+		result += tooltip_icon(tribe.get_worker_descr(input.first)->icon_filename());
+	}
+	// No arrow for buildings without inputs (e.g. a woodcutter): nothing turns into the outputs.
+	if (!result.empty()) {
+		result += "<space gap=4><img src=\"images/ui_basic/scrollbar_right.png\"><space gap=4>";
+	}
+	for (Widelands::DescriptionIndex output : site->output_ware_types()) {
+		result += tooltip_icon(tribe.get_ware_descr(output)->icon_filename());
+	}
+	for (Widelands::DescriptionIndex output : site->output_worker_types()) {
+		result += tooltip_icon(tribe.get_worker_descr(output)->icon_filename());
+	}
+	return result;
+}
+
 }  // namespace
 
 bool building_can_be_enhanced(const Widelands::TribeDescr& tribe,
@@ -572,4 +606,56 @@ std::string building_upgrade_richtext(const Widelands::Player& player,
 	result += "<p><vspace gap=8></p>";
 
 	return as_richtext(result);
+}
+
+std::string building_production_tooltip(const Widelands::TribeDescr& tribe,
+                                        const Widelands::BuildingDescr& descr) {
+	const auto* site = dynamic_cast<const Widelands::ProductionSiteDescr*>(&descr);
+	if (site == nullptr) {
+		return std::string();
+	}
+	const UI::FontStyleInfo& heading =
+	   g_style_manager->ware_info_style(UI::WareInfoStyle::kNormal).header_font();
+
+	std::string result;
+	const std::string icons = production_icons(tribe, descr);
+	if (!icons.empty()) {
+		result += "<br>" + icons;
+	}
+
+	// Each later level of the upgrade chain: its name and only the outputs it adds to the levels
+	// before it, so that the tooltip stays short.
+	std::set<Widelands::DescriptionIndex> known_wares(
+	   site->output_ware_types().begin(), site->output_ware_types().end());
+	std::set<Widelands::DescriptionIndex> known_workers(
+	   site->output_worker_types().begin(), site->output_worker_types().end());
+	// Upgrade chains are short; the limit only guards against a malformed cyclic chain.
+	constexpr int kMaxLevels = 8;
+	int levels = 0;
+	for (const Widelands::BuildingDescr* next = level(tribe, descr.enhancement());
+	     next != nullptr && levels < kMaxLevels; next = level(tribe, next->enhancement()), ++levels) {
+		std::string added;
+		if (const auto* next_site = dynamic_cast<const Widelands::ProductionSiteDescr*>(next)) {
+			for (Widelands::DescriptionIndex ware : next_site->output_ware_types()) {
+				if (known_wares.insert(ware).second) {
+					added += tooltip_icon(tribe.get_ware_descr(ware)->icon_filename());
+				}
+			}
+			for (Widelands::DescriptionIndex worker : next_site->output_worker_types()) {
+				if (known_workers.insert(worker).second) {
+					added += tooltip_icon(tribe.get_worker_descr(worker)->icon_filename());
+				}
+			}
+		}
+		result += "<br>" +
+		          heading.as_font_tag(format(_("Enhance to %s"), richtext_escape(next->descname())));
+		if (!added.empty()) {
+			result += "<space gap=6>" + added;
+		}
+	}
+
+	if (result.empty()) {
+		return result;
+	}
+	return heading.as_font_tag(_("Production")) + result;
 }
