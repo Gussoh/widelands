@@ -24,11 +24,13 @@
 #include "logic/map_objects/tribes/tribe_descr.h"
 #include "logic/map_objects/tribes/worker.h"
 #include "ui/basic/textarea.h"
+#include "ui/game/building_info_tabs.h"
 #include "ui/game/inputqueuedisplay.h"
 #include "ui/wui/interactive_gamebase.h"
 
 static char const* pic_tab_wares = "images/wui/buildings/menu_tab_wares.png";
 static char const* pic_tab_workers = "images/wui/buildings/menu_list_workers.png";
+static char const* pic_tab_outputs = "images/wui/menus/statistics_wares.png";
 
 constexpr int8_t kButtonSize = 34;
 
@@ -88,6 +90,13 @@ void ProductionSiteWindow::init(bool avoid_fastclick, bool workarea_preview_want
 		}
 
 		get_tabs()->add("wares", g_image_cache->get(pic_tab_wares), prod_box, _("Wares"));
+	}
+
+	// Add the production (outputs) tab
+	if (BuildingOutputsDisplay::has_outputs(production_site->descr())) {
+		get_tabs()->add("outputs", g_image_cache->get(pic_tab_outputs),
+		                new BuildingOutputsDisplay(get_tabs(), *ibase(), *production_site),
+		                _("Production"));
 	}
 
 	// Add workers tab if applicable

@@ -1,5 +1,7 @@
 wl_library(ui_game_buildingwindows
   SRCS
+    building_info_tabs.cc
+    building_info_tabs.h
     buildingwindow.cc
     buildingwindow.h
     constructionsitewindow.cc
